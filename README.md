@@ -1,6 +1,6 @@
-Xmodem  - implementacja protokołu transferu plików.
+# Xmodem  - implementacja protokołu transferu plików.
 
-Funkcje programu: 
+##### Funkcje programu: 
 
 - Funkcja odbiornika
 - Funkcja nadajnika
@@ -8,7 +8,7 @@ Funkcje programu:
 - Zastosowanie algebraicznej sumy kontrolnej i algorytmu CRC (obydwa warianty)
 - Środowisko Windows (wykorzystanie winapi)
 
-Wymagana wiedza do ćwiczenia:
+##### Wymagana wiedza do ćwiczenia:
 
 - Ogólna znajomość zasad transmisji modemowej.
 - Znajomość obsługi portu szeregowego w środowisku MS Windows
