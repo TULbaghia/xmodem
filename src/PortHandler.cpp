@@ -24,32 +24,33 @@ PortHandler::PortHandler(const string& portName, const string& transmissionMode)
 
     portSettings.DCBlength = sizeof(portSettings);   // dlugosc struktury w bajtach, ! musi byc ustawiona na sizeof(DCB)
     GetCommState(portHandle, &portSettings);         // Pobiera biezace ustawienia sterowania dla okreslonego urzadzenia komunikacyjnego.
+
     portSettings.BaudRate = CBR_9600;                // predkosc transmisji 9600 bps
     portSettings.Parity = NOPARITY;                  // brak bitu parzystosci
     portSettings.StopBits = ONESTOPBIT;              // ustawienie bitu stopu (jeden bit)
     portSettings.ByteSize = 8;                       // liczba wysylanych bitow
 
-    portSettings.fParity = TRUE;                     // If this member is TRUE, parity checking is performed and errors are reported.
-    portSettings.fDtrControl = DTR_CONTROL_DISABLE;  // Kontrola linii DTR: DTR_CONTROL_DISABLE (sygnal nieaktywny)
-    portSettings.fRtsControl = RTS_CONTROL_DISABLE;  // Kontrola linii RTR: DTR_CONTROL_DISABLE (sygnal nieaktywny)
-    portSettings.fOutxCtsFlow = FALSE;               // If this member is TRUE, the CTS (clear-to-send) signal is monitored for output flow control. If this member is TRUE and CTS is turned off, output is suspended until CTS is sent again.
-    portSettings.fOutxDsrFlow = FALSE;               // If this member is TRUE, the DSR (data-set-ready) signal is monitored for output flow control. If this member is TRUE and DSR is turned off, output is suspended until DSR is sent again
-    portSettings.fDsrSensitivity = FALSE;            // If this member is TRUE, the communications driver is sensitive to the state of the DSR signal. The driver ignores any bytes received, unless the DSR modem input line is high.
-    portSettings.fAbortOnError = FALSE;              // If this member is TRUE, the driver terminates all read and write operations with an error status if an error occurs. The driver will not accept any further communications operations until the application has acknowledged the error by calling the ClearCommError function.
-    portSettings.fOutX = FALSE;                      // Indicates whether XON/XOFF flow control is used during transmission. If this member is TRUE, transmission stops when the XoffChar character is received and starts again when the XonChar character is received.
-    portSettings.fInX = FALSE;                       // Indicates whether XON/XOFF flow control is used during reception.
-    portSettings.fErrorChar = FALSE;                 // Indicates whether bytes received with parity errors are replaced with the character specified by the ErrorChar member
-    portSettings.fNull = FALSE;                      // If this member is TRUE, null bytes are discarded when received.
-    SetCommState(portHandle, &portSettings);         // Configures a communications device according to the specifications in a device-control block
+    portSettings.fParity = TRUE;                     // wykonuj testy poprawnosci i zglaszaj bledy
+    portSettings.fDtrControl = DTR_CONTROL_DISABLE;  // Kontrola data-terminal-ready DTE (np. komputer)
+    portSettings.fRtsControl = RTS_CONTROL_DISABLE;  // Kontrola request-to-send ramka kontrolna (MAC) w wartstwie dostepu do danych
+    portSettings.fOutxCtsFlow = FALSE;               // Monitoruj clear-to-send
+    portSettings.fOutxDsrFlow = FALSE;               // Monitoruj data-set-ready gotowe do wyslania lub odebrania danych
+    portSettings.fDsrSensitivity = FALSE;            // aktywuj tylko na wysoki stan od modemu
+    portSettings.fAbortOnError = FALSE;              // zakoncz wszystkie operacje IO ze statusem bledu gdy taki wystapi
+    portSettings.fOutX = FALSE;                      // zatrzymuj transmisje przy znaku XON / XOFF
+    portSettings.fInX = FALSE;                       // jak ma zachowac sie XON / XOFF w buforze
+    portSettings.fErrorChar = FALSE;                 // Wskazuje, czy bajty odebrane z błędami parzystości są zastępowane znakiem określonym przez element ErrorChar
+    portSettings.fNull = FALSE;                      // Odrzucac NULL bajty
+    SetCommState(portHandle, &portSettings);         // konfiguruj urzadzenie komunikacyjne
 
-    portTimings.ReadIntervalTimeout = 3000;         // The maximum time allowed to elapse before the arrival of the next byte on the communications line, in milliseconds.
-    portTimings.ReadTotalTimeoutConstant = 3000;    // A constant used to calculate the total time-out period for read operations, in milliseconds. For each read operation, this value is multiplied by the requested number of bytes to be read.
-    portTimings.ReadTotalTimeoutMultiplier = 3000;  // A constant used to calculate the total time-out period for read operations, in milliseconds. For each read operation, this value is added to the product of the ReadTotalTimeoutMultiplier member and the requested number of bytes.
-    portTimings.WriteTotalTimeoutMultiplier = 100;   // The multiplier used to calculate the total time-out period for write operations, in milliseconds. For each write operation, this value is multiplied by the number of bytes to be written.
-    portTimings.WriteTotalTimeoutConstant = 100;     // A constant used to calculate the total time-out period for write operations, in milliseconds. For each write operation, this value is added to the product of the WriteTotalTimeoutMultiplier member and the number of bytes to be written.
+    portTimings.ReadIntervalTimeout = 3000;          // Maksymalny czas, jaki upływa przed przybyciem następnego bajtu na linię komunikacyjną, w milisekundach.
+    portTimings.ReadTotalTimeoutConstant = 3000;     // Stała używana do obliczania całkowitego limitu czasu operacji odczytu w milisekundach. Dla każdej operacji odczytu wartość ta jest mnożona przez wymaganą liczbę bajtów do odczytania.
+    portTimings.ReadTotalTimeoutMultiplier = 3000;   // Stała używana do obliczania całkowitego limitu czasu operacji odczytu w milisekundach. Dla każdej operacji odczytu wartość ta jest dodawana do iloczynu elementu ReadTotalTimeoutMultiplier i żądanej liczby bajtów.
+    portTimings.WriteTotalTimeoutMultiplier = 100;   // Mnożnik używany do obliczania całkowitego limitu czasu operacji zapisu w milisekundach. Dla każdej operacji zapisu wartość ta jest mnożona przez liczbę bajtów do zapisania.
+    portTimings.WriteTotalTimeoutConstant = 100;     // Stała używana do obliczania całkowitego limitu czasu operacji zapisu w milisekundach. Dla każdej operacji zapisu wartość ta jest dodawana do iloczynu elementu WriteTotalTimeoutMultiplier i liczby bajtów do zapisania.
 
-    SetCommTimeouts(portHandle, &portTimings);       // Sets the time-out parameters for all read and write operations on a specified communications device.
-    ClearCommError(portHandle, &portError, &portResources);  // Retrieves information about a communications error and reports the current status of a communications device.
+    SetCommTimeouts(portHandle, &portTimings);       // Ustawia parametry limitu czasu dla wszystkich operacji odczytu i zapisu na określonym urządzeniu komunikacyjnym.
+    ClearCommError(portHandle, &portError, &portResources);  // Pobiera informacje o błędzie komunikacji i zgłasza bieżący stan urządzenia komunikacyjnego.
 }
 
 void PortHandler::receive(const string& fileName) {
@@ -59,7 +60,7 @@ void PortHandler::receive(const string& fileName) {
         cout << "Oczekiwanie na SOH" << '\n';
         ReadFile(portHandle, &type, 1, &bitsLengthInChar, nullptr);                               // pobranie 1 bajtu z zasobu
         cout << "Otrzymano odpowiedz: " << ((int) type) << '\n';
-        if (SOH == type) {
+        if (SOH == type) {                                                                                                         // jezeli bajt SOH to rozpoczynamy transmisje
             cout << "Ustalono polacznie z nadawca." << '\n';
             break;
         }
@@ -125,9 +126,9 @@ void PortHandler::send(const string& fileName) {
 
     for (int i = 0; ; i++) {
         cout << "Oczekiwanie na C/NAK" << '\n';
-        ReadFile(portHandle, &type, 1, &bitsLengthInChar, nullptr);             // pobranie 1 bajtu z zasobu
+        ReadFile(portHandle, &type, 1, &bitsLengthInChar, nullptr);             // oczekiwanie na probe nadania danych
         cout << "Otrzymano odpowiedz: " << ((int) type) << '\n';
-        if (C == type || NAK == type) {
+        if (C == type || NAK == type) {                                                                          // jezeli C lub ASK rozpoczynamy transmisje
             cout << "Ustalono polacznie z nadawca." << '\n';
             break;
         }
@@ -137,32 +138,32 @@ void PortHandler::send(const string& fileName) {
         }
     }
 
-    BYTE transmissionMethod = type;
-    BYTE transmissionLength = C == type ? 133 : 132;
+    BYTE transmissionMethod = type;                                                                              // zapisujemy metode transmisji C | ASK
+    BYTE transmissionLength = C == type ? 133 : 132;                                                             // ustalamy ilosc bajtow dla typu transmisji
     ifstream is(fileName, ios::binary);
-    deque<unsigned char> buffStream(istreambuf_iterator<char>(is), {});
+    deque<unsigned char> buffStream(istreambuf_iterator<char>(is), {});                                      // wczytujemy wartosci ze strumienie do deque
     is.close();
 
     BYTE packetNo = 1;
     int globalPacket = 0;
-    while(!buffStream.empty()) {
+    while(!buffStream.empty()) {                                                                                // jezeli mamy dane na liscie
         cout << "-=-=-=-=-=-=-=-=-=-=- " << globalPacket << "-=-=-=-=-=-=-=-=-=-=-" << '\n';
         cout << "Rozpoczynam komponowanie pakietu" << '\n';
         BYTE tmpType = 0;
         DataBlock dataBlock{};
-        dataBlock.packetNoQue = packetNo;
-        dataBlock.packetNoNeg = 0xFF - packetNo;
-        dataBlock.isCRC16 = (C == transmissionMethod);
+        dataBlock.packetNoQue = packetNo;                                                                       // ustawiamy numer pakietu
+        dataBlock.packetNoNeg = 0xFF - packetNo;                                                                // wyliczamy dopelnienie
+        dataBlock.isCRC16 = (C == transmissionMethod);                                                          // czy otrzymano C
 
         for(int i=0; i< (sizeof(dataBlock.data)/ sizeof(dataBlock.data[0])); i++) {
-            if(buffStream.empty()) {
+            if(buffStream.empty()) {                                                                            // jezeli lista jest pusta dopelnij blok wartosciami 26 (0x1A)
                 dataBlock.data[i] = 26;
             } else {
-                dataBlock.data[i] = buffStream.front();
-                buffStream.pop_front();
+                dataBlock.data[i] = buffStream.front();                                                         // odczytaj wartosc z poczatka listy i przypisz do bloku danych
+                buffStream.pop_front();                                                                         // usun wartosc z poczatku listy
             }
         }
-        dataBlock.generateCRC();
+        dataBlock.generateCRC();                                                                                // generuj CRC dla bloku danych
 
         cout << "Wygenerowano dane pakietu" << '\n';
 
