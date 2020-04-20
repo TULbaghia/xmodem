@@ -52,9 +52,9 @@ PortHandler::PortHandler(const string& portName, const string& transmissionMode)
 void PortHandler::receive(const string& fileName) {
     BYTE type = 0;
     for (int i = 0; ; i++) {
-        WriteFile(portHandle, &transmissionType, 1, &transmissionCharLength, NULL);         // Wysylamy sygnal gotowosci do odbioru
+        WriteFile(portHandle, &transmissionType, 1, &transmissionCharLength, nullptr);         // Wysylamy sygnal gotowosci do odbioru
         cout << "Oczekiwanie na SOH" << '\n';
-        ReadFile(portHandle, &type, 1, &transmissionCharLength, NULL);                               // pobranie 1 bajtu z zasobu
+        ReadFile(portHandle, &type, 1, &transmissionCharLength, nullptr);                               // pobranie 1 bajtu z zasobu
         cout << "Otrzymano odpowiedz: " << ((int) type) << '\n';
         if (SOH == type) {
             cout << "Ustalono polacznie z nadawca." << '\n';
@@ -75,28 +75,29 @@ void PortHandler::receive(const string& fileName) {
         DataBlock dataBlock{};
 
         //odbieramy dane o rozmiarze struktury i wczytujemy je do niej
-        ReadFile(portHandle, &dataBlock, numberOfBytesToRead-1, &dataBlockSize, NULL);
+        ReadFile(portHandle, &dataBlock, numberOfBytesToRead-1, &dataBlockSize, nullptr);
 
         dataBlock.print();
-        //czy bedziemy kozystac z CRC-16 (tryb pracy C || NAK)
+        //czy bedziemy korzystac z CRC-16 (tryb pracy C || NAK)
         dataBlock.isCRC16 = (transmissionType == C);
 
         // Sprawdzamy poprawnosc- przy bledzie wysylamy NAK, gdy jest OK ACK
         if(!dataBlock.isCorrect()) {
-            WriteFile(portHandle, &NAK, 1, &transmissionCharLength, NULL);
+            WriteFile(portHandle, &NAK, 1, &transmissionCharLength, nullptr);
         } else {
-            WriteFile(portHandle, &ACK, 1, &transmissionCharLength, NULL);
-
-            dataBlock.streamData(fout);
+            WriteFile(portHandle, &ACK, 1, &transmissionCharLength, nullptr);
         }
 
         //odbieramy kolejny bajt naglowka
-        ReadFile(portHandle, &type, 1, &transmissionCharLength, NULL);
+        ReadFile(portHandle, &type, 1, &transmissionCharLength, nullptr);
 
+        if(dataBlock.isCorrect()) {
+            dataBlock.streamData(fout, EOT == type || CAN == type);
+        }
     }
 
     //potwierdzamy EOT
-    WriteFile(portHandle, &ACK, 1, &transmissionCharLength, NULL);
+    WriteFile(portHandle, &ACK, 1, &transmissionCharLength, nullptr);
 
     cout << "FIN" << '\n';
 

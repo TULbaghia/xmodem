@@ -17,16 +17,24 @@ struct DataBlock {
     void print() {
         cout << "-=-=-=" << '\n';
         cout << (int) packetNoQue << "___" << (int) packetNoNeg << '\n';
-        for(unsigned char i : data) {
+        for (unsigned char i : data) {
             cout << (int) i << "-";
         }
-        cout << '\n' << (int)CRC[0] << "__" << (int)CRC[1] << '\n';
+        cout << '\n' << (int) CRC[0] << "__" << (int) CRC[1] << '\n';
         cout << "-=-=-=" << '\n';
     }
 
-    void streamData(ofstream& ofs) {
-        for(int i=0; i<sizeof(data)/sizeof(data[0]); i++) {
-            ofs << data[i];
+    void streamData(ofstream &ofstr, bool isLastPacket) {
+        int skipAfter = 0;
+        if (isLastPacket) {
+            for (int i = sizeof(data) / sizeof(data[0]) - 1; i >= 0; i--) {
+                if (data[i] == 0x1A) { // padding (26)
+                    skipAfter++;
+                }
+            }
+        }
+        for (int i = 0; i < (sizeof(data) / sizeof(data[0])) - skipAfter; i++) {
+            ofstr << data[i];
         }
     }
 
@@ -35,7 +43,7 @@ struct DataBlock {
     }
 
     bool isCorrectNo() {
-        if(255 != packetNoNeg + packetNoQue) {
+        if (255 != packetNoNeg + packetNoQue) {
             cout << "Niepoprawny numer pakietu." << '\n';
             return false;
         }
@@ -43,7 +51,7 @@ struct DataBlock {
     }
 
     bool isCorrectCheckSum() {
-        if(calculateDataCRC() != calculateBlockCRC()) {
+        if (calculateDataCRC() != calculateBlockCRC()) {
             cout << "Niepoprawna suma kontrolna." << '\n';
             return false;
         }
@@ -53,7 +61,7 @@ struct DataBlock {
     int calculateDataCRC() {
         int count = sizeof(data) / sizeof(data[0]);
         BYTE *ptr = data;
-        if(isCRC16) {
+        if (isCRC16) {
             int crc = 0;
             while (count--) {
                 crc ^= (*ptr++ << 8);               // XOR starszej czesci crc z nowa liczba przesynieta to starszych wartosci
@@ -68,7 +76,7 @@ struct DataBlock {
         } else {
             int checksum = 0;
 
-            while(count--) {
+            while (count--) {
                 checksum += (*ptr++);
             }
             checksum %= 256;

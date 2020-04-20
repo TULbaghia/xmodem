@@ -13,7 +13,7 @@ int main() {
 
     PortHandler portHandler("COM2", "C");
 
-    portHandler.receive("./resources/receive123.txt");
+    portHandler.receive("./resources/receive.txt");
     exit(1);
 
 //    cout << "-=-=-=-=-=-=-=-=-=-=-=-=-=-= xModem -=-=-=-=-=-=-=-=-=-=-=-=-=-=" << '\n';
