@@ -1,5 +1,5 @@
 #include <iostream>
-#include <FileHandler/PortHandler.h>
+#include <PortHandler.h>
 
 using namespace std;
 
@@ -20,12 +20,16 @@ int main() {
     cout << "Tryb pracy: " << TRANSMISSION_MODE << '\n';
     cout << "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-" << '\n';
 
+    string FILE_NAME;
+    cout << "Podaj nazwe pliku, ktorego chcesz uzyc: resources/";
+    cin >> FILE_NAME;
+
     PortHandler portHandler(PORT_LISTENER, TRANSMISSION_MODE);
 
-    if("RECEIVER" == WORKING_MODE) {
-        portHandler.receive("./resources/receive.txt");
+    if ("RECEIVER" == WORKING_MODE) {
+        portHandler.receive("./resources/" + FILE_NAME);
     } else {
-        portHandler.send("./resources/small_image.png");
+        portHandler.send("./resources/" + FILE_NAME);
     }
 
     return 0;
@@ -34,7 +38,7 @@ int main() {
 string setPortListener() {
     int tmp;
     cout << "Format: Wpisz liczbe." << '\n';
-    cout << "Wybierz port do nasluchiwania: COM" << '\n';
+    cout << "Wybierz port do nasluchiwania: COM";
     cin >> tmp;
     return "COM" + to_string(tmp);
 }
@@ -48,7 +52,7 @@ string setWorkMode(string &TRANSMISSION_MODE) {
     cout << "-=-=-=-=-" << '\n';
     while (true) {
         int tmp;
-        cout << "Pracuj jako: ";
+        cout << "Pracuj jako:";
         cin >> tmp;
 
         if (1 == tmp || 3 == tmp) TRANSMISSION_MODE = "C";

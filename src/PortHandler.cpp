@@ -1,7 +1,6 @@
-#include "FileHandler/PortHandler.h"
+#include "PortHandler.h"
 #include "DataBlock.h"
 #include <iostream>
-#include <fstream>
 #include <deque>
 
 using std::cout;
@@ -11,8 +10,8 @@ using std::ifstream;
 using std::deque;
 using std::istreambuf_iterator;
 
-PortHandler::PortHandler(const string& portName, const string& transmissionMode) : portName(portName.c_str()), transmissionType(transmissionMode == "C" ? C : NAK), numberOfBytesToRead(transmissionMode == "C" ? 133 : 132) {
-    this->portHandle = CreateFile(this->portName,                  // Nazwa zasobu ktory ma zostac uzyty
+PortHandler::PortHandler(const string& portName, const string& transmissionMode) : transmissionType(transmissionMode == "C" ? C : NAK), numberOfBytesToRead(transmissionMode == "C" ? 133 : 132) {
+    this->portHandle = CreateFile(portName.c_str(),                // Nazwa zasobu ktory ma zostac uzyty
                                   GENERIC_READ | GENERIC_WRITE,    // wymagany typ dostepu do zasobu
                                   0,                               // typ udostepniania zasobu 0: nie mozna udostepnic portu COM
                                   nullptr,                         // ustawienia bezpieczenstwa SECURITY_ATTRIBUTES (brak)
@@ -56,9 +55,9 @@ PortHandler::PortHandler(const string& portName, const string& transmissionMode)
 void PortHandler::receive(const string& fileName) {
     BYTE type = 0;
     for (int i = 0; ; i++) {
-        WriteFile(portHandle, &transmissionType, 1, &transmissionCharLength, nullptr);         // Wysylamy sygnal gotowosci do odbioru
+        WriteFile(portHandle, &transmissionType, 1, &bitsLengthInChar, nullptr);         // Wysylamy sygnal gotowosci do odbioru
         cout << "Oczekiwanie na SOH" << '\n';
-        ReadFile(portHandle, &type, 1, &transmissionCharLength, nullptr);                               // pobranie 1 bajtu z zasobu
+        ReadFile(portHandle, &type, 1, &bitsLengthInChar, nullptr);                               // pobranie 1 bajtu z zasobu
         cout << "Otrzymano odpowiedz: " << ((int) type) << '\n';
         if (SOH == type) {
             cout << "Ustalono polacznie z nadawca." << '\n';
@@ -78,7 +77,7 @@ void PortHandler::receive(const string& fileName) {
     while(!(type == EOT || type == CAN)) {
         DataBlock dataBlock{};
 
-        //odbieramy dane o rozmiarze struktury i wczytujemy je do niej
+        //odbieramy dane o rozmiarze pakietu bez pierwszego bajtu i wczytujemy je do niej
         ReadFile(portHandle, &dataBlock, numberOfBytesToRead-1, &dataBlockSize, nullptr);
 
         dataBlock.print();
@@ -88,13 +87,13 @@ void PortHandler::receive(const string& fileName) {
         do {
             // Sprawdzamy poprawnosc- przy bledzie wysylamy NAK, gdy jest OK ACK
             if(!dataBlock.isCorrect()) {
-                WriteFile(portHandle, &NAK, 1, &transmissionCharLength, nullptr);
+                WriteFile(portHandle, &NAK, 1, &bitsLengthInChar, nullptr);
             } else {
-                WriteFile(portHandle, &ACK, 1, &transmissionCharLength, nullptr);
+                WriteFile(portHandle, &ACK, 1, &bitsLengthInChar, nullptr);
             }
 
             //odbieramy kolejny bajt naglowka
-            ReadFile(portHandle, &type, 1, &transmissionCharLength, nullptr);
+            ReadFile(portHandle, &type, 1, &bitsLengthInChar, nullptr);
         } while(0 == type); //w przypadku zgubienia ACK/NAK wyslij jeszcze raz
 
         if(dataBlock.isCorrect()) {
@@ -108,13 +107,13 @@ void PortHandler::receive(const string& fileName) {
     cout << "EOT FIN" << '\n';
 
     //potwierdzamy EOT
-    WriteFile(portHandle, &ACK, 1, &transmissionCharLength, nullptr);
+    WriteFile(portHandle, &ACK, 1, &bitsLengthInChar, nullptr);
 
     //sprawdzamy i potwierdzamy ETB
-    ReadFile(portHandle, &type, 1, &transmissionCharLength, nullptr);
+    ReadFile(portHandle, &type, 1, &bitsLengthInChar, nullptr);
     if(ETB == type) {
         cout << "ETB FIN" << '\n';
-        WriteFile(portHandle, &ACK, 1, &transmissionCharLength, nullptr);
+        WriteFile(portHandle, &ACK, 1, &bitsLengthInChar, nullptr);
     }
 
     CloseHandle(portHandle);
@@ -126,7 +125,7 @@ void PortHandler::send(const string& fileName) {
 
     for (int i = 0; ; i++) {
         cout << "Oczekiwanie na C/NAK" << '\n';
-        ReadFile(portHandle, &type, 1, &transmissionCharLength, nullptr);                               // pobranie 1 bajtu z zasobu
+        ReadFile(portHandle, &type, 1, &bitsLengthInChar, nullptr);             // pobranie 1 bajtu z zasobu
         cout << "Otrzymano odpowiedz: " << ((int) type) << '\n';
         if (C == type || NAK == type) {
             cout << "Ustalono polacznie z nadawca." << '\n';
@@ -169,13 +168,13 @@ void PortHandler::send(const string& fileName) {
 
         do {
             // wyslij naglowek oraz blok danych
-            WriteFile(portHandle, &SOH, 1, &transmissionCharLength, nullptr);
+            WriteFile(portHandle, &SOH, 1, &bitsLengthInChar, nullptr);
             cout << "Przeslano naglowek SOH pakietu" << '\n';
-            WriteFile(portHandle, &dataBlock, transmissionLength-1, &transmissionCharLength, nullptr);
+            WriteFile(portHandle, &dataBlock, transmissionLength-1, &bitsLengthInChar, nullptr);
             cout << "Przeslano dane pakietu" << '\n';
 
             // odczytaj informacje zwrotna
-            ReadFile(portHandle, &tmpType, 1, &transmissionCharLength, nullptr);
+            ReadFile(portHandle, &tmpType, 1, &bitsLengthInChar, nullptr);
             cout << "Odczytano wartosc tmpType: " << (int) tmpType << '\n';
 
             if(ACK == tmpType) {
@@ -197,8 +196,8 @@ void PortHandler::send(const string& fileName) {
 
     cout << '\n' << "Przeslano wszystkie dane; przesylanie EOT" << '\n';
     do {
-        WriteFile(portHandle, &EOT, 1, &transmissionCharLength, nullptr);
-        ReadFile(portHandle, &type, 1, &transmissionCharLength, nullptr);
+        WriteFile(portHandle, &EOT, 1, &bitsLengthInChar, nullptr);
+        ReadFile(portHandle, &type, 1, &bitsLengthInChar, nullptr);
         if(ACK == type) {
             cout << "Potwierdzono zakonczenie transmisji" << '\n';
         } else {

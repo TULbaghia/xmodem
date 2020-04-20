@@ -4,7 +4,6 @@
 #include <windows.h>
 #include <cstdint>
 
-
 const BYTE SOH = 0x01;     // Start of Header
 const BYTE EOT = 0x04;     // End of Transmission
 const BYTE ACK = 0x06;     // Acknowledge

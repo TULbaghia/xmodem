@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(include)
 
 add_executable(xModem main.cpp
-        src/FileHandler/PortHandler.cpp)
+        src/PortHandler.cpp)
 
 set(source "${CMAKE_SOURCE_DIR}/resources")
 set(destination "${CMAKE_CURRENT_BINARY_DIR}/resources")
