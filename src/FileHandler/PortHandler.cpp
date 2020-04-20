@@ -2,10 +2,14 @@
 #include "DataBlock.h"
 #include <iostream>
 #include <fstream>
+#include <deque>
 
 using std::cout;
 using std::ofstream;
 using std::ios;
+using std::ifstream;
+using std::deque;
+using std::istreambuf_iterator;
 
 PortHandler::PortHandler(const string& portName, const string& transmissionMode) : portName(portName.c_str()), transmissionType(transmissionMode == "C" ? C : NAK), numberOfBytesToRead(transmissionMode == "C" ? 133 : 132) {
     this->portHandle = CreateFile(this->portName,                  // Nazwa zasobu ktory ma zostac uzyty
@@ -118,5 +122,89 @@ void PortHandler::receive(const string& fileName) {
 }
 
 void PortHandler::send(const string& fileName) {
+    BYTE type = 0;
 
+    for (int i = 0; ; i++) {
+        cout << "Oczekiwanie na C/NAK" << '\n';
+        ReadFile(portHandle, &type, 1, &transmissionCharLength, nullptr);                               // pobranie 1 bajtu z zasobu
+        cout << "Otrzymano odpowiedz: " << ((int) type) << '\n';
+        if (C == type || NAK == type) {
+            cout << "Ustalono polacznie z nadawca." << '\n';
+            break;
+        }
+        if(i==100) {
+            cout << "Nie ustanowono polacznia. Force EOT/" << '\n';
+            exit(1);
+        }
+    }
+
+    BYTE transmissionMethod = type;
+    BYTE transmissionLength = C == type ? 133 : 132;
+    ifstream is(fileName, ios::binary);
+    deque<unsigned char> buffStream(istreambuf_iterator<char>(is), {});
+    is.close();
+
+    BYTE packetNo = 1;
+    int globalPacket = 0;
+    while(!buffStream.empty()) {
+        cout << "-=-=-=-=-=-=-=-=-=-=- " << globalPacket << "-=-=-=-=-=-=-=-=-=-=-" << '\n';
+        cout << "Rozpoczynam komponowanie pakietu" << '\n';
+        BYTE tmpType = 0;
+        DataBlock dataBlock{};
+        dataBlock.packetNoQue = packetNo;
+        dataBlock.packetNoNeg = 0xFF - packetNo;
+        dataBlock.isCRC16 = (C == transmissionMethod);
+
+        for(int i=0; i< (sizeof(dataBlock.data)/ sizeof(dataBlock.data[0])); i++) {
+            if(buffStream.empty()) {
+                dataBlock.data[i] = 26;
+            } else {
+                dataBlock.data[i] = buffStream.front();
+                buffStream.pop_front();
+            }
+        }
+        dataBlock.generateCRC();
+
+        cout << "Wygenerowano dane pakietu" << '\n';
+
+        do {
+            // wyslij naglowek oraz blok danych
+            WriteFile(portHandle, &SOH, 1, &transmissionCharLength, nullptr);
+            cout << "Przeslano naglowek SOH pakietu" << '\n';
+            WriteFile(portHandle, &dataBlock, transmissionLength-1, &transmissionCharLength, nullptr);
+            cout << "Przeslano dane pakietu" << '\n';
+
+            // odczytaj informacje zwrotna
+            ReadFile(portHandle, &tmpType, 1, &transmissionCharLength, nullptr);
+            cout << "Odczytano wartosc tmpType: " << (int) tmpType << '\n';
+
+            if(ACK == tmpType) {
+                cout << "Wyslano pakiet" << '\n';
+                break;
+            } else if(NAK == tmpType) {
+                cout << "Blad wysylania pakietu, ponawianie" << '\n';
+                continue;
+            } else if(CAN == tmpType) {
+                cout << "Polaczenie przerwane" << '\n';
+                exit(1);
+            }
+
+        } while(0 != tmpType);
+
+        packetNo++;
+        globalPacket++;
+    }
+
+    cout << '\n' << "Przeslano wszystkie dane; przesylanie EOT" << '\n';
+    do {
+        WriteFile(portHandle, &EOT, 1, &transmissionCharLength, nullptr);
+        ReadFile(portHandle, &type, 1, &transmissionCharLength, nullptr);
+        if(ACK == type) {
+            cout << "Potwierdzono zakonczenie transmisji" << '\n';
+        } else {
+            cout << "Wystapil blad przy konczeniu transmisji, ponawianie" << '\n';
+        }
+    } while (0 == type);
+
+    CloseHandle(portHandle);
 }

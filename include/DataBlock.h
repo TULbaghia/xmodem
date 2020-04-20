@@ -39,7 +39,7 @@ struct DataBlock {
     }
 
     bool isCorrect() {
-        return isCorrectNo() && isCorrectCheckSum();
+        return isCorrectNo() && isCorrectChecksum();
     }
 
     bool isCorrectNo() {
@@ -50,15 +50,15 @@ struct DataBlock {
         return true;
     }
 
-    bool isCorrectCheckSum() {
-        if (calculateDataCRC() != calculateBlockCRC()) {
+    bool isCorrectChecksum() {
+        if (calculateChecksum() != calculateBlockCRC()) {
             cout << "Niepoprawna suma kontrolna." << '\n';
             return false;
         }
         return true;
     }
 
-    int calculateDataCRC() {
+    int calculateChecksum() {
         int count = sizeof(data) / sizeof(data[0]);
         BYTE *ptr = data;
         if (isCRC16) {
@@ -86,6 +86,16 @@ struct DataBlock {
 
     int calculateBlockCRC() {
         return isCRC16 ? (CRC[0] << 8) | CRC[1] & 0x00FF : CRC[0];
+    }
+
+    void generateCRC() {
+        if(isCRC16) {
+            int crc = calculateChecksum();
+            CRC[0] = (BYTE)((crc >> 8) & 0xff);
+            CRC[1] = (BYTE)(crc & 0xff);
+        } else {
+            CRC[0] = (BYTE) calculateChecksum();
+        }
     }
 };
 

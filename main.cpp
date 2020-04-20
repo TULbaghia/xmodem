@@ -8,11 +8,6 @@ string setWorkMode(string &TRANSMISSION_MODE);
 string setPortListener();
 
 int main() {
-//    PortHandler portHandler("COM2", "C");
-//
-//    portHandler.send("./resources/receive.txt");
-//    exit(1);
-
     cout << "-=-=-=-=-=-=-=-=-=-=-=-=-=-= xModem -=-=-=-=-=-=-=-=-=-=-=-=-=-=" << '\n';
     string TRANSMISSION_MODE;
     string WORKING_MODE = setWorkMode(TRANSMISSION_MODE);
@@ -30,7 +25,7 @@ int main() {
     if("RECEIVER" == WORKING_MODE) {
         portHandler.receive("./resources/receive.txt");
     } else {
-        portHandler.send("./resources/receive.txt");
+        portHandler.send("./resources/small_image.png");
     }
 
     return 0;
