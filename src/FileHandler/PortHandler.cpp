@@ -81,30 +81,42 @@ void PortHandler::receive(const string& fileName) {
         //czy bedziemy korzystac z CRC-16 (tryb pracy C || NAK)
         dataBlock.isCRC16 = (transmissionType == C);
 
-        // Sprawdzamy poprawnosc- przy bledzie wysylamy NAK, gdy jest OK ACK
-        if(!dataBlock.isCorrect()) {
-            WriteFile(portHandle, &NAK, 1, &transmissionCharLength, nullptr);
-        } else {
-            WriteFile(portHandle, &ACK, 1, &transmissionCharLength, nullptr);
-        }
+        do {
+            // Sprawdzamy poprawnosc- przy bledzie wysylamy NAK, gdy jest OK ACK
+            if(!dataBlock.isCorrect()) {
+                WriteFile(portHandle, &NAK, 1, &transmissionCharLength, nullptr);
+            } else {
+                WriteFile(portHandle, &ACK, 1, &transmissionCharLength, nullptr);
+            }
 
-        //odbieramy kolejny bajt naglowka
-        ReadFile(portHandle, &type, 1, &transmissionCharLength, nullptr);
+            //odbieramy kolejny bajt naglowka
+            ReadFile(portHandle, &type, 1, &transmissionCharLength, nullptr);
+        } while(0 == type); //w przypadku zgubienia ACK/NAK wyslij jeszcze raz
 
         if(dataBlock.isCorrect()) {
             dataBlock.streamData(fout, EOT == type || CAN == type);
         }
     }
 
+    if(CAN == type) {
+        cout << "Wystapil blad przy przesylaniu" << '\n';
+    }
+    cout << "EOT FIN" << '\n';
+
     //potwierdzamy EOT
     WriteFile(portHandle, &ACK, 1, &transmissionCharLength, nullptr);
 
-    cout << "FIN" << '\n';
+    //sprawdzamy i potwierdzamy ETB
+    ReadFile(portHandle, &type, 1, &transmissionCharLength, nullptr);
+    if(ETB == type) {
+        cout << "ETB FIN" << '\n';
+        WriteFile(portHandle, &ACK, 1, &transmissionCharLength, nullptr);
+    }
 
     CloseHandle(portHandle);
     fout.close();
 }
 
-void PortHandler::send() {
+void PortHandler::send(const string& fileName) {
 
 }

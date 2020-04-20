@@ -22,7 +22,7 @@ private:
 public:
     explicit PortHandler(const string& portName, const string& transmissionMode);
 
-    void send();
+    void send(const string& fileName);
 
     void receive(const string& fileName);
 };
